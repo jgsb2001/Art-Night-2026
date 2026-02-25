@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Art Showcase</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;width:100vw;height:100vh;font-family:'Helvetica Neue',Arial,sans-serif;cursor:none}
+#stage{position:relative;width:100vw;height:100vh;overflow:hidden}
+
+/* ── Slides ── */
+.slide{
+  position:absolute;inset:0;
+  background-size:contain;background-repeat:no-repeat;background-position:center;
+  background-color:#000;
+  will-change:transform,opacity;
+}
+
+/* ── Ken Burns ── */
+@keyframes kb-zi{from{transform:scale(1)}to{transform:scale(1.13)}}
+@keyframes kb-zo{from{transform:scale(1.13)}to{transform:scale(1)}}
+@keyframes kb-pr{from{transform:scale(1.09) translateX(-3%)}to{transform:scale(1.09) translateX(3%)}}
+@keyframes kb-pl{from{transform:scale(1.09) translateX(3%)}to{transform:scale(1.09) translateX(-3%)}}
+@keyframes kb-dg{from{transform:scale(1) translate(-2%,-2%)}to{transform:scale(1.13) translate(2%,2%)}}
+.kb-zi{animation:kb-zi 8s ease-in-out forwards}
+.kb-zo{animation:kb-zo 8s ease-in-out forwards}
+.kb-pr{animation:kb-pr 8s ease-in-out forwards}
+.kb-pl{animation:kb-pl 8s ease-in-out forwards}
+.kb-dg{animation:kb-dg 8s ease-in-out forwards}
+
+/* ── FX canvas ── */
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:10}
+
+/* ── Progress bar ── */
+#progress{position:absolute;top:0;left:0;height:3px;width:0%;background:rgba(255,255,255,0.75);z-index:30;pointer-events:none}
+
+/* ── Chapter label ── */
+#ch-label{
+  position:absolute;top:26px;left:50%;transform:translateX(-50%);
+  color:rgba(255,255,255,0);font-size:11px;letter-spacing:5px;text-transform:uppercase;
+  z-index:30;transition:color 0.4s;white-space:nowrap;
+  text-shadow:0 1px 6px rgba(0,0,0,0.9);pointer-events:none;
+}
+#stage:hover #ch-label{color:rgba(255,255,255,0.55)}
+
+/* ── Title card ── */
+#title-card{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:#000;z-index:20;opacity:0;pointer-events:none;
+}
+#title-card.tc-in{animation:tcIn 0.65s cubic-bezier(0.22,1,0.36,1) forwards}
+#title-card.tc-out{animation:tcOut 0.55s ease-in forwards}
+@keyframes tcIn{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:scale(1)}}
+@keyframes tcOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(0.97)}}
+#tc-ch{font-size:11px;letter-spacing:7px;text-transform:uppercase;color:#444;margin-bottom:20px}
+#tc-title{
+  font-size:clamp(38px,8vw,90px);font-weight:900;
+  color:#fff;letter-spacing:-3px;line-height:1;text-align:center;padding:0 48px;
+}
+#tc-sub{font-size:13px;color:#555;margin-top:20px;letter-spacing:5px;text-transform:uppercase}
+#tc-line{
+  height:2px;width:0;margin-top:40px;
+  background:var(--accent,#fff);
+  transition:width 1.5s cubic-bezier(0.22,1,0.36,1) 0.2s;
+}
+#title-card.tc-in #tc-line{width:110px}
+
+/* ── Navigation ── */
+#nav{
+  position:absolute;bottom:36px;left:0;right:0;
+  display:flex;align-items:center;justify-content:center;gap:20px;
+  z-index:30;opacity:0;transition:opacity 0.35s;
+}
+#stage:hover #nav{opacity:1}
+.nb{
+  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);
+  color:#fff;width:50px;height:50px;border-radius:50%;cursor:pointer;
+  font-size:22px;backdrop-filter:blur(12px);
+  display:flex;align-items:center;justify-content:center;
+  transition:background 0.2s,transform 0.12s;
+}
+.nb:hover{background:rgba(255,255,255,0.24);transform:scale(1.1)}
+.nb:active{transform:scale(0.93)}
+#counter{color:rgba(255,255,255,0.45);font-size:12px;letter-spacing:3px;min-width:80px;text-align:center}
+
+/* ── Audio Controls ── */
+#audio-bar{
+  position:absolute;bottom:100px;right:28px;
+  display:flex;align-items:center;gap:12px;
+  background:rgba(10,10,10,0.75);
+  backdrop-filter:blur(16px);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:40px;padding:10px 18px;
+  z-index:30;
+  opacity:0.25;
+  transition:opacity 0.3s;
+}
+#stage:hover #audio-bar{opacity:1}
+#audio-play{
+  background:none;border:none;color:#fff;cursor:pointer;
+  width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;
+  background:rgba(255,255,255,0.12);
+  border:1px solid rgba(255,255,255,0.2);
+  transition:background 0.2s,transform 0.1s;
+  flex-shrink:0;
+}
+#audio-play:hover{background:rgba(255,255,255,0.25);transform:scale(1.08)}
+#audio-play:active{transform:scale(0.92)}
+#audio-label{
+  font-size:10px;letter-spacing:3px;text-transform:uppercase;
+  color:rgba(255,255,255,0.5);white-space:nowrap;
+}
+#audio-vol{
+  -webkit-appearance:none;appearance:none;
+  width:70px;height:3px;border-radius:2px;
+  background:rgba(255,255,255,0.2);cursor:pointer;outline:none;
+}
+#audio-vol::-webkit-slider-thumb{
+  -webkit-appearance:none;width:12px;height:12px;border-radius:50%;
+  background:#fff;cursor:pointer;
+}
+#audio-vol::-moz-range-thumb{
+  width:12px;height:12px;border-radius:50%;
+  background:#fff;cursor:pointer;border:none;
+}
+/* Vinyl EQ visualizer dots */
+#audio-eq{
+  display:flex;align-items:center;gap:2px;height:16px;
+}
+#audio-eq span{
+  display:block;width:3px;border-radius:2px;background:rgba(255,255,255,0.5);
+  animation:eq-bounce 0s ease-in-out infinite alternate;
+  height:4px;
+}
+#audio-eq.active span{animation-duration:0.4s}
+#audio-eq span:nth-child(1){animation-delay:0s;  animation-duration:0.35s}
+#audio-eq span:nth-child(2){animation-delay:0.1s; animation-duration:0.45s}
+#audio-eq span:nth-child(3){animation-delay:0.05s;animation-duration:0.38s}
+#audio-eq span:nth-child(4){animation-delay:0.15s;animation-duration:0.42s}
+#audio-eq span:nth-child(5){animation-delay:0.08s;animation-duration:0.36s}
+@keyframes eq-bounce{from{height:3px}to{height:14px}}
+
+/* ── Custom cursor ── */
+#cursor{
+  position:fixed;width:10px;height:10px;background:#fff;border-radius:50%;
+  pointer-events:none;z-index:9999;transform:translate(-50%,-50%);
+  mix-blend-mode:difference;transition:width .15s,height .15s;
+}
+#cursor.big{width:36px;height:36px}
+</style>
+</head>
+<body>
+<div id="cursor"></div>
+<div id="stage">
+  <div id="slide-a" class="slide"></div>
+  <div id="slide-b" class="slide"></div>
+  <canvas id="fx"></canvas>
+  <div id="progress"></div>
+  <div id="ch-label"></div>
+  <div id="title-card">
+    <div id="tc-ch"></div>
+    <div id="tc-title"></div>
+    <div id="tc-sub"></div>
+    <div id="tc-line"></div>
+  </div>
+  <div id="nav">
+    <button class="nb" id="btn-prev">&#8249;</button>
+    <div id="counter">— / —</div>
+    <button class="nb" id="btn-next">&#8250;</button>
+  </div>
+  <!-- Audio Controls -->
+  <div id="audio-bar">
+    <button id="audio-play" title="Play / Pause lo-fi music">▶</button>
+    <div id="audio-label">Lo-Fi Beats</div>
+    <div id="audio-eq">
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <input id="audio-vol" type="range" min="0" max="1" step="0.02" value="0.6" title="Volume">
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// DATA  (Illustrator moved to last chapter)
+// ════════════════════════════════════════════════════════════
+const CHAPTERS = [
+  {
+    title:"August", sub:"Skill Building", color:"#F59E0B",
+    imgs:[
+      "_PS_August_1_Skill_Building/Skill_1_personal_collage_1.png",
+      "_PS_August_1_Skill_Building/Skill_1_personal_collage_2.png",
+      "_PS_August_1_Skill_Building/Skill_1_personal_collage_3.png",
+      "_PS_August_1_Skill_Building/Skill_2_StoveTop.png",
+      "_PS_August_1_Skill_Building/Skill_3_FoodGallery.png",
+    ]
+  },
+  {
+    title:"Stamps", sub:"August Project", color:"#10B981",
+    imgs:[
+      "_PS_August_2_Project_Stamps/Stamp_p1_EXAMPLE_SidneyHillman.jpg",
+      "_PS_August_2_Project_Stamps/Stamp_p3_EXAMPLE_EllenGatesStarr.jpg",
+      "_PS_August_2_Project_Stamps/Stamp_p4_EXAMPLE_CrystalLee.jpg",
+      "_PS_August_2_Project_Stamps/Stamp_p3_Pdelgado.jpg",
+      "_PS_August_2_Project_Stamps/Stamp_p7_JGibson.jpg",
+      "_PS_August_2_Project_Stamps/Stamp_p7_JPatino.jpg",
+    ]
+  },
+  {
+    title:"September", sub:"Skill Building", color:"#3B82F6",
+    imgs:[
+      "_PS_September_1_Skill_Building/Skill_4_HawaiiPostcard_1.png",
+      "_PS_September_1_Skill_Building/Skill_4_HawaiiPostcard_2.png",
+      "_PS_September_1_Skill_Building/Skill_5_car_reveal_transition.gif",
+      "_PS_September_1_Skill_Building/Skill_6_dress_reveal_transition.gif",
+      "_PS_September_1_Skill_Building/Skill_7_bw_reveal_transition.gif",
+    ]
+  },
+  {
+    title:"Homecoming Dance", sub:"September Project", color:"#EC4899",
+    imgs:[
+      "_PS_September_2_Project_HOCO_Dance/ChristianAmado_P1_HOCO.png",
+      "_PS_September_2_Project_HOCO_Dance/HomecomingDancePoster_EXAMPLE 2_REVISED.png",
+      "_PS_September_2_Project_HOCO_Dance/HomecomingDancePoster_P3_VCedillo (1) (1).png",
+      "_PS_September_2_Project_HOCO_Dance/HomecomingDancePoster_P4_ALeon.png",
+      "_PS_September_2_Project_HOCO_Dance/Homecoming DanceJPatino_P.7.png",
+      "_PS_September_2_Project_HOCO_Dance/Homecoming_p7_JRosales.png",
+      "_PS_September_2_Project_HOCO_Dance/Hoco_jimmyMorales_P3.png",
+      "_PS_September_2_Project_HOCO_Dance/Home coing danceOmar_p_6.png",
+      "_PS_September_2_Project_HOCO_Dance/homecomimngdance_p6_harveyj.png",
+      "_PS_September_2_Project_HOCO_Dance/homecomingdanceposter_p3_llopez (1).png",
+      "_PS_September_2_Project_HOCO_Dance/homecoming-dance_andrewvasquez.png",
+    ]
+  },
+  {
+    title:"Football Game", sub:"September Project", color:"#F97316",
+    imgs:[
+      "_PS_September_3_Project_FootballGame/footballposter_p6_2_EXAMPLE.jpg",
+      "_PS_September_3_Project_FootballGame/p3_YanetAndDiego_LARGE.jpg",
+      "_PS_September_3_Project_FootballGame/HocoFootballgame_P4_JAlbarran.jpg",
+      "_PS_September_3_Project_FootballGame/Homcomingfballgame_p4_AGarcia.jpg",
+      "_PS_September_3_Project_FootballGame/Homecoming Football Game Poster_p1_AGarcia.jpg",
+      "_PS_September_3_Project_FootballGame/HomecomingFootballGamePoster_p3_Vgomez.jpg",
+      "_PS_September_3_Project_FootballGame/Hoco_Game_ChristianA_P1.jpg",
+    ]
+  },
+  {
+    title:"October", sub:"Skill Building", color:"#EF4444",
+    imgs:[
+      "_PS_October_1_Skill_Building/Skill_8_triptych_reveal.gif",
+      "_PS_October_1_Skill_Building/Skill_9_dog.png",
+      "_PS_October_1_Skill_Building/Skill_10_Textures.png",
+      "_PS_October_1_Skill_Building/Skill_11_mountain_card_swap.gif",
+      "_PS_October_1_Skill_Building/Skill_12_CarShowPoster.png",
+    ]
+  },
+  {
+    title:"Dance with the Staff", sub:"October Project", color:"#14B8A6",
+    imgs:[
+      "_PS_October_2_Project_DanceWStaff/Dancingwiththestaff_p1_CAlvarez_EXAMPLE.jpg",
+      "_PS_October_2_Project_DanceWStaff/redisndancingwithstaff_p3_KMorales_EXAMPLE.jpg",
+      "_PS_October_2_Project_DanceWStaff/DacewiththeStaffPoster_p4_ARivas.jpg",
+      "_PS_October_2_Project_DanceWStaff/Dance with the staff_PeterDelgado_p3.jpg",
+      "_PS_October_2_Project_DanceWStaff/DWTT_ChristanA_P1_EXAMPLE.jpg",
+      "_PS_October_2_Project_DanceWStaff/hiphop_p4_AGarcia.jpg",
+      "_PS_October_2_Project_DanceWStaff/hiphopposter_NAvendano-2.jpg",
+      "_PS_October_2_Project_DanceWStaff/DTWS Omar _J.jpg",
+    ]
+  },
+  {
+    title:"November", sub:"Skill Building", color:"#A78BFA",
+    imgs:[
+      "_PS_November_1_Skill_Building/Skill_13_RosePattern.png",
+      "_PS_November_1_Skill_Building/Skill_14_TextBehindObject.jpg",
+      "_PS_November_1_Skill_Building/Skill_15_PerspectiveText.jpg",
+      "_PS_November_1_Skill_Building/Skill_16_IntersectText.jpg",
+      "_PS_November_1_Skill_Building/cloneStamp_iris_reveal.gif",
+    ]
+  },
+  {
+    title:"Remembrance Card", sub:"November Project", color:"#6366F1",
+    imgs:[
+      "_PS_November_2_Project_RemembranceCard/Remembrance_Calixto.jpg",
+      "_PS_November_2_Project_RemembranceCard/Remembrance_Jovita.jpg",
+      "_PS_November_2_Project_RemembranceCard/Remembrance_Tupac.jpg",
+      "_PS_November_2_Project_RemembranceCard/Remembrance_Zeus.jpg",
+    ]
+  },
+  {
+    title:"December", sub:"Skill Building", color:"#22D3EE",
+    imgs:[
+      "_PS_December_Skill_Building_1/colorizeVintage_reveal.gif",
+      "_PS_December_Skill_Building_1/tribal_build.gif",
+      "_PS_December_Skill_Building_1/SoccerGoal_Samin.png",
+      "_PS_December_Skill_Building_1/GOTGPoster_MAlamilla.png",
+      "_PS_December_Skill_Building_1/hippolizard_reveal.gif",
+    ]
+  },
+  // ── Illustrator last ──────────────────────────────────────
+  {
+    title:"Illustrator", sub:"Vector Art & Design", color:"#8B5CF6",
+    imgs:[
+      "_Illustrator/Ex1- Boxes _diegobravo_p3.jpg",
+      "_Illustrator/Ex2_circles_EGarcia_P3.jpg",
+      "_Illustrator/Ex3_trophy_JArredondo.jpg",
+      "_Illustrator/Ex4_OlympicFlag_Esmeralda.jpg",
+      "_Illustrator/Ex5_Star_VO.jpg",
+      "_Illustrator/Ex6_CompoundShapes_JasonPina.jpg",
+      "_Illustrator/Ex7_PenTool_StraightLines_Makayla.jpg",
+      "_Illustrator/Ex8_PenTool_CurvedLines_Jonathan.jpg",
+      "_Illustrator/Ex9_PentoolPractice_Obi-01.jpg",
+      "_Illustrator/Ex9_PentoolPractice_Obi-02.jpg",
+      "_Illustrator/Ex9_PentoolPractice_Obi-03.jpg",
+      "_Illustrator/Logo_P3_VCedillo.png",
+      "_Illustrator/PathfinderPractice_ENGLISH_thaily martinez-p3_ai.jpg",
+      "_Illustrator/Tshirt_Design_Fsantana.jpg",
+    ]
+  },
+];
+
+// Build flat slide list
+const SLIDES = [];
+CHAPTERS.forEach((ch, ci) => {
+  SLIDES.push({ type:'title', ci });
+  ch.imgs.forEach(src => SLIDES.push({ type:'img', ci, src }));
+});
+const IMG_TOTAL = SLIDES.filter(s => s.type==='img').length;
+
+// ════════════════════════════════════════════════════════════
+// DOM
+// ════════════════════════════════════════════════════════════
+const stage    = document.getElementById('stage');
+const sA       = document.getElementById('slide-a');
+const sB       = document.getElementById('slide-b');
+const canvas   = document.getElementById('fx');
+const ctx      = canvas.getContext('2d');
+const progress = document.getElementById('progress');
+const chLabel  = document.getElementById('ch-label');
+const titleCard= document.getElementById('title-card');
+const tcCh     = document.getElementById('tc-ch');
+const tcTitle  = document.getElementById('tc-title');
+const tcSub    = document.getElementById('tc-sub');
+const tcLine   = document.getElementById('tc-line');
+const counter  = document.getElementById('counter');
+const cursor   = document.getElementById('cursor');
+const audioPlay= document.getElementById('audio-play');
+const audioVol = document.getElementById('audio-vol');
+const audioEq  = document.getElementById('audio-eq');
+
+// ════════════════════════════════════════════════════════════
+// SLIDESHOW STATE
+// ════════════════════════════════════════════════════════════
+let cur = 0, busy = false, paused = false;
+let progRaf = null, progStart = 0;
+let activeEl = sA, inactiveEl = sB;
+const SLIDE_MS = 5500, TITLE_MS = 2800;
+
+function resizeFx(){ canvas.width = innerWidth; canvas.height = innerHeight; }
+resizeFx(); addEventListener('resize', resizeFx);
+
+// ── Ken Burns ────────────────────────────────────────────────
+const KB = ['kb-zi','kb-zo','kb-pr','kb-pl','kb-dg'];
+function applyKB(el){
+  KB.forEach(c=>el.classList.remove(c));
+  void el.offsetWidth;
+  el.classList.add(KB[Math.floor(Math.random()*KB.length)]);
+}
+
+// ── Easing ───────────────────────────────────────────────────
+const eIn3  = t => t*t*t;
+const eOut3 = t => 1 - Math.pow(1-t,3);
+const eSin  = t => Math.sin(t * Math.PI);
+
+// ════════════════════════════════════════════════════════════
+// TRANSITIONS
+// ════════════════════════════════════════════════════════════
+function txGlitch(onSwap, onDone){
+  const W=canvas.width,H=canvas.height,s=performance.now(),dur=820;
+  let swapped=false;
+  function frame(now){
+    const t=Math.min((now-s)/dur,1);
+    ctx.clearRect(0,0,W,H);
+    if(t<0.5){
+      const p=t*2;
+      ctx.fillStyle=`rgba(0,0,0,${eIn3(p)*0.97})`; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='rgba(0,0,0,0.5)';
+      for(let y=0;y<H;y+=3) ctx.fillRect(0,y,W,1.5);
+      if(p>0.25){
+        const sh=(p-0.25)*90;
+        ctx.fillStyle=`rgba(255,0,80,${(p-0.25)*0.4})`; ctx.fillRect(-sh,0,W,H);
+        ctx.fillStyle=`rgba(0,200,255,${(p-0.25)*0.4})`; ctx.fillRect(sh,0,W,H);
+      }
+      const rips=Math.floor(p*16);
+      for(let i=0;i<rips;i++){
+        ctx.fillStyle=`rgba(255,255,255,${Math.random()*0.3})`;
+        ctx.fillRect((Math.random()-0.5)*60,Math.random()*H,W,Math.random()*16+2);
+      }
+    }
+    if(t>=0.48&&!swapped){swapped=true;onSwap();}
+    if(t>=0.5){
+      const p=(t-0.5)*2;
+      ctx.fillStyle=`rgba(0,0,0,${eOut3(1-p)*0.95})`; ctx.fillRect(0,0,W,H);
+      if(p<0.4){ctx.fillStyle='rgba(0,0,0,0.4)';for(let y=0;y<H;y+=3)ctx.fillRect(0,y,W,1.5);}
+    }
+    if(t<1)requestAnimationFrame(frame); else{ctx.clearRect(0,0,W,H);onDone();}
+  }
+  requestAnimationFrame(frame);
+}
+
+function txLeak(onSwap, onDone){
+  const W=canvas.width,H=canvas.height,s=performance.now(),dur=900;
+  const HUE=[25,45,15,200][Math.floor(Math.random()*4)];
+  let swapped=false;
+  function frame(now){
+    const t=Math.min((now-s)/dur,1);
+    ctx.clearRect(0,0,W,H);
+    const sweep=t*(W+H*0.8), peak=eSin(t);
+    const g=ctx.createLinearGradient(sweep-H*0.9,0,sweep+60,H);
+    g.addColorStop(0,'rgba(0,0,0,0)');
+    g.addColorStop(0.3,`hsla(${HUE},100%,75%,${peak*0.6})`);
+    g.addColorStop(0.5,`hsla(${HUE},100%,97%,${peak*0.92})`);
+    g.addColorStop(0.7,`hsla(${HUE},100%,75%,${peak*0.6})`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    if(t>0.35&&t<0.65){
+      ctx.fillStyle=`rgba(255,255,255,${eSin((t-0.35)/0.3)*0.92})`;
+      ctx.fillRect(0,0,W,H);
+    }
+    if(t>=0.5&&!swapped){swapped=true;onSwap();}
+    if(t<1)requestAnimationFrame(frame); else{ctx.clearRect(0,0,W,H);onDone();}
+  }
+  requestAnimationFrame(frame);
+}
+
+function txFlash(onSwap, onDone){
+  const W=canvas.width,H=canvas.height,s=performance.now(),dur=700;
+  let swapped=false;
+  function frame(now){
+    const t=Math.min((now-s)/dur,1);
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle=`rgba(255,252,230,${eSin(t)*0.97})`; ctx.fillRect(0,0,W,H);
+    if(t>=0.48&&!swapped){swapped=true;onSwap();}
+    if(t<1)requestAnimationFrame(frame); else{ctx.clearRect(0,0,W,H);onDone();}
+  }
+  requestAnimationFrame(frame);
+}
+
+function txBurn(onSwap, onDone){
+  const W=canvas.width,H=canvas.height,s=performance.now(),dur=880;
+  const cx=W/2,cy=H/2,maxR=Math.sqrt(cx*cx+cy*cy);
+  let swapped=false;
+  function frame(now){
+    const t=Math.min((now-s)/dur,1);
+    ctx.clearRect(0,0,W,H);
+    const peak=eSin(t), r=Math.max(0.01,peak)*maxR*1.3;
+    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+    g.addColorStop(0,`rgba(255,240,180,${peak})`);
+    g.addColorStop(0.3,`rgba(255,190,60,${peak*0.85})`);
+    g.addColorStop(0.65,`rgba(180,80,0,${peak*0.6})`);
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    if(t>0.3&&t<0.7){
+      const core=eSin((t-0.3)/0.4)*0.9;
+      const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,maxR*0.4);
+      cg.addColorStop(0,`rgba(255,255,255,${core})`);
+      cg.addColorStop(0.5,`rgba(255,255,220,${core*0.5})`);
+      cg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=cg; ctx.fillRect(0,0,W,H);
+    }
+    if(t>=0.5&&!swapped){swapped=true;onSwap();}
+    if(t<1)requestAnimationFrame(frame); else{ctx.clearRect(0,0,W,H);onDone();}
+  }
+  requestAnimationFrame(frame);
+}
+
+function txSlice(onSwap, onDone){
+  const W=canvas.width,H=canvas.height,s=performance.now(),dur=950;
+  const N=10, sh=H/N;
+  let swapped=false;
+  function frame(now){
+    const t=Math.min((now-s)/dur,1);
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#000';
+    if(t<0.5){
+      const p=eIn3(t*2);
+      for(let i=0;i<N;i++){const w=p*W;ctx.fillRect(i%2===0?0:W-w,i*sh,w,sh+1);}
+    }
+    if(t>=0.48&&!swapped){swapped=true;onSwap();}
+    if(t>=0.5){
+      const p=eOut3((t-0.5)*2);
+      for(let i=0;i<N;i++){const w=(1-p)*W;ctx.fillRect(i%2===0?0:W-w,i*sh,w,sh+1);}
+    }
+    if(t<1)requestAnimationFrame(frame); else{ctx.clearRect(0,0,W,H);onDone();}
+  }
+  requestAnimationFrame(frame);
+}
+
+const TXS=[txGlitch,txLeak,txFlash,txBurn,txSlice];
+let lastTx=-1;
+function pickTx(){let i;do{i=Math.floor(Math.random()*TXS.length);}while(i===lastTx);lastTx=i;return TXS[i];}
+
+// ════════════════════════════════════════════════════════════
+// PROGRESS
+// ════════════════════════════════════════════════════════════
+function startProgress(){
+  stopProgress();
+  if(paused)return;
+  progStart=performance.now();
+  function tick(now){
+    if(paused)return;
+    const pct=Math.min((now-progStart)/SLIDE_MS*100,100);
+    progress.style.width=pct+'%';
+    if(pct<100)progRaf=requestAnimationFrame(tick);
+    else{progress.style.width='0%';goNext();}
+  }
+  progRaf=requestAnimationFrame(tick);
+}
+function stopProgress(){
+  if(progRaf){cancelAnimationFrame(progRaf);progRaf=null;}
+  progress.style.width='0%';
+}
+
+// ════════════════════════════════════════════════════════════
+// PRELOAD
+// ════════════════════════════════════════════════════════════
+function preloadAhead(idx){
+  for(let i=1;i<=4;i++){
+    const s=SLIDES[(idx+i)%SLIDES.length];
+    if(s&&s.type==='img'){const im=new Image();im.src=s.src;}
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// SLIDE ENGINE
+// ════════════════════════════════════════════════════════════
+function showTitle(slideObj){
+  busy=true; stopProgress();
+  const ch=CHAPTERS[slideObj.ci];
+  tcCh.textContent=`Chapter ${slideObj.ci+1} of ${CHAPTERS.length}`;
+  tcTitle.textContent=ch.title;
+  tcSub.textContent=ch.sub;
+  titleCard.style.setProperty('--accent',ch.color);
+  tcLine.style.width='0';
+  titleCard.classList.remove('tc-in','tc-out');
+  titleCard.style.pointerEvents='all';
+  void titleCard.offsetWidth;
+  titleCard.classList.add('tc-in');
+  setTimeout(()=>{
+    titleCard.classList.remove('tc-in');
+    titleCard.classList.add('tc-out');
+    titleCard.style.pointerEvents='none';
+    setTimeout(()=>{titleCard.classList.remove('tc-out');busy=false;goNext();},560);
+  },TITLE_MS);
+}
+
+function showImage(slideObj){
+  busy=true;
+  const ch=CHAPTERS[slideObj.ci];
+  chLabel.textContent=`${ch.title}  ·  ${ch.sub}`;
+  inactiveEl.style.backgroundImage=`url("${slideObj.src}")`;
+  inactiveEl.style.opacity='0';
+  inactiveEl.style.zIndex='1';
+  activeEl.style.zIndex='2';
+  pickTx()(
+    ()=>{
+      inactiveEl.style.zIndex='2'; activeEl.style.zIndex='1';
+      inactiveEl.style.opacity='1'; activeEl.style.opacity='0';
+      applyKB(inactiveEl);
+    },
+    ()=>{
+      [activeEl,inactiveEl]=[inactiveEl,activeEl];
+      busy=false; preloadAhead(cur); startProgress();
+    }
+  );
+  updateCounter();
+}
+
+function goTo(idx){
+  if(busy)return;
+  cur=((idx%SLIDES.length)+SLIDES.length)%SLIDES.length;
+  const s=SLIDES[cur];
+  if(s.type==='title')showTitle(s); else showImage(s);
+}
+function goNext(){goTo(cur+1);}
+function goPrev(){goTo(cur-1);}
+
+function updateCounter(){
+  const shown=SLIDES.slice(0,cur+1).filter(s=>s.type==='img').length;
+  counter.textContent=`${shown} / ${IMG_TOTAL}`;
+}
+
+// ════════════════════════════════════════════════════════════
+// LO-FI MUSIC ENGINE  (Web Audio API)
+// ════════════════════════════════════════════════════════════
+const LOFI = (() => {
+  let ac, master, masterLp, noiseBuf, vinylSrc;
+  let playing = false, schedTimer = null;
+  let beat = 0, nextTime = 0;
+
+  const BPM   = 78;
+  const STEP  = (60 / BPM) / 4; // 16th-note duration in seconds
+
+  // Jazz chord progression in F (Fmaj7 → Dm7 → Bbmaj7 → C7)
+  // Each chord spans 16 steps (1 bar)
+  const CHORDS = [
+    [174.61, 220.00, 261.63, 329.63], // Fmaj7
+    [146.83, 174.61, 220.00, 261.63], // Dm7
+    [116.54, 146.83, 174.61, 220.00], // Bbmaj7
+    [130.81, 164.81, 196.00, 233.08], // C7
+  ];
+
+  // 16-step drum patterns
+  const KICK  = [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,0,0,0];
+  const SNARE = [0,0,0,0, 1,0,0,0, 0,0,0,0, 1,0,0,0];
+  const HAT   = [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,1];
+
+  // ── Build a shared noise buffer ──────────────────────────
+  function buildNoiseBuf(sec) {
+    const n = Math.floor(ac.sampleRate * sec);
+    const buf = ac.createBuffer(1, n, ac.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+
+  // ── Instruments ─────────────────────────────────────────
+  function kick(t) {
+    const osc = ac.createOscillator();
+    const env = ac.createGain();
+    osc.frequency.setValueAtTime(160, t);
+    osc.frequency.exponentialRampToValueAtTime(38, t + 0.18);
+    env.gain.setValueAtTime(0.9, t);
+    env.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+    osc.connect(env); env.connect(master);
+    osc.start(t); osc.stop(t + 0.32);
+  }
+
+  function snare(t) {
+    const src = ac.createBufferSource();
+    src.buffer = noiseBuf;
+    src.loop = false;
+    const bp = ac.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = 2800; bp.Q.value = 0.6;
+    const env = ac.createGain();
+    env.gain.setValueAtTime(0.55, t);
+    env.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    // Tone body
+    const body = ac.createOscillator();
+    body.frequency.value = 180;
+    const bEnv = ac.createGain();
+    bEnv.gain.setValueAtTime(0.15, t);
+    bEnv.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    src.connect(bp); bp.connect(env); env.connect(master);
+    body.connect(bEnv); bEnv.connect(master);
+    src.start(t); src.stop(t + 0.22);
+    body.start(t); body.stop(t + 0.1);
+  }
+
+  function hat(t, open) {
+    const src = ac.createBufferSource();
+    src.buffer = noiseBuf;
+    src.loop = false;
+    const hp = ac.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 9000;
+    const env = ac.createGain();
+    const dur = open ? 0.13 : 0.04;
+    env.gain.setValueAtTime(0.2, t);
+    env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(hp); hp.connect(env); env.connect(master);
+    src.start(t); src.stop(t + dur + 0.01);
+  }
+
+  function note(freq, t, dur, vel) {
+    // Rhodes-like: sine + slight triangle overtone
+    const o1 = ac.createOscillator();
+    const o2 = ac.createOscillator();
+    o1.type = 'sine';   o1.frequency.value = freq;
+    o2.type = 'triangle'; o2.frequency.value = freq * 2;
+    o2.detune.value = 7;
+    const env = ac.createGain();
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(vel * 0.07, t + 0.018);
+    env.gain.setValueAtTime(vel * 0.045, t + dur * 0.25);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const g2 = ac.createGain(); g2.gain.value = 0.35;
+    o1.connect(env); o2.connect(g2); g2.connect(env); env.connect(master);
+    o1.start(t); o1.stop(t + dur + 0.05);
+    o2.start(t); o2.stop(t + dur + 0.05);
+  }
+
+  function playChord(ci, t) {
+    const chord = CHORDS[ci % CHORDS.length];
+    const barDur = STEP * 16;
+    chord.forEach((freq, i) => {
+      // Slight arpeggiation (strummed feel)
+      const delay = i * 0.022;
+      note(freq, t + delay, barDur - delay, 0.85 + Math.random() * 0.3);
+      // Add bass note (one octave down)
+      if (i === 0) note(freq * 0.5, t, barDur * 0.8, 0.7);
+    });
+  }
+
+  // ── Scheduler ────────────────────────────────────────────
+  function schedule() {
+    if (!playing) return;
+    while (nextTime < ac.currentTime + 0.4) {
+      const step = beat % 16;
+      const bar  = Math.floor(beat / 16);
+      if (step === 0) playChord(bar, nextTime);
+      if (KICK[step])  kick(nextTime);
+      if (SNARE[step]) snare(nextTime);
+      if (HAT[step])   hat(nextTime, step === 15);
+      nextTime += STEP;
+      beat++;
+    }
+    schedTimer = setTimeout(schedule, 100);
+  }
+
+  // ── Vinyl crackle ────────────────────────────────────────
+  function startVinyl() {
+    const sec = 3;
+    const n   = Math.floor(ac.sampleRate * sec);
+    const buf = ac.createBuffer(1, n, ac.sampleRate);
+    const d   = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) {
+      d[i] = (Math.random() * 2 - 1) * 0.012;
+      if (Math.random() < 0.0004) d[i] = (Math.random() * 2 - 1) * 0.35;
+    }
+    vinylSrc = ac.createBufferSource();
+    vinylSrc.buffer = buf;
+    vinylSrc.loop = true;
+    const hp = ac.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 600;
+    const g = ac.createGain(); g.gain.value = 0.35;
+    vinylSrc.connect(hp); hp.connect(g); g.connect(masterLp);
+    vinylSrc.start();
+  }
+
+  // ── Public API ───────────────────────────────────────────
+  return {
+    init() {
+      if (ac) return;
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      master   = ac.createGain(); master.gain.value = 0.75;
+      masterLp = ac.createBiquadFilter();
+      masterLp.type = 'lowpass'; masterLp.frequency.value = 1150; masterLp.Q.value = 0.65;
+      // Subtle saturation via waveshaper
+      const ws = ac.createWaveShaper();
+      const curve = new Float32Array(256);
+      for (let i = 0; i < 256; i++) {
+        const x = (i * 2) / 256 - 1;
+        curve[i] = (Math.PI + 120) * x / (Math.PI + 120 * Math.abs(x));
+      }
+      ws.curve = curve; ws.oversample = '4x';
+      master.connect(ws); ws.connect(masterLp);
+      masterLp.connect(ac.destination);
+      noiseBuf = buildNoiseBuf(0.25);
+    },
+
+    play() {
+      this.init();
+      if (ac.state === 'suspended') ac.resume();
+      if (playing) return;
+      playing   = true;
+      beat      = 0;
+      nextTime  = ac.currentTime + 0.05;
+      schedule();
+      startVinyl();
+    },
+
+    pause() {
+      playing = false;
+      if (schedTimer) { clearTimeout(schedTimer); schedTimer = null; }
+      if (vinylSrc)   { try { vinylSrc.stop(); } catch(e){} vinylSrc = null; }
+      if (ac) ac.suspend();
+    },
+
+    setVolume(v) {
+      if (master) master.gain.setTargetAtTime(v * 0.75, ac.currentTime, 0.05);
+    },
+
+    get isPlaying() { return playing; }
+  };
+})();
+
+// ════════════════════════════════════════════════════════════
+// AUDIO CONTROLS
+// ════════════════════════════════════════════════════════════
+audioPlay.addEventListener('click', () => {
+  if (LOFI.isPlaying) {
+    LOFI.pause();
+    audioPlay.textContent = '▶';
+    audioEq.classList.remove('active');
+  } else {
+    LOFI.play();
+    audioPlay.textContent = '⏸';
+    audioEq.classList.add('active');
+  }
+});
+
+audioVol.addEventListener('input', () => {
+  LOFI.setVolume(parseFloat(audioVol.value));
+});
+
+// ════════════════════════════════════════════════════════════
+// SLIDESHOW EVENTS
+// ════════════════════════════════════════════════════════════
+stage.addEventListener('mouseenter', () => { paused=true;  stopProgress(); });
+stage.addEventListener('mouseleave', () => {
+  paused=false;
+  if(!busy && SLIDES[cur].type==='img') startProgress();
+});
+
+document.getElementById('btn-next').addEventListener('click', ()=>{ stopProgress(); goNext(); });
+document.getElementById('btn-prev').addEventListener('click', ()=>{ stopProgress(); goPrev(); });
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight'||e.key===' '){ stopProgress(); goNext(); }
+  if(e.key==='ArrowLeft') { stopProgress(); goPrev(); }
+  if(e.key==='m'||e.key==='M') audioPlay.click(); // M to toggle music
+});
+
+document.addEventListener('mousemove', e=>{
+  cursor.style.left=e.clientX+'px';
+  cursor.style.top=e.clientY+'px';
+});
+
+document.querySelectorAll('.nb, #audio-play').forEach(b=>{
+  b.addEventListener('mouseenter',()=>cursor.classList.add('big'));
+  b.addEventListener('mouseleave',()=>cursor.classList.remove('big'));
+});
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+activeEl.style.opacity='1';  activeEl.style.zIndex='2';
+inactiveEl.style.opacity='0'; inactiveEl.style.zIndex='1';
+preloadAhead(0);
+goTo(0);
+</script>
+</body>
+</html>
